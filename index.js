@@ -2,17 +2,15 @@ window.addEventListener("DOMContentLoaded", event => {
 
     getData().then(response => {
         let videoGameData = response;
-        //console.log(videoGameData)
 
         let root = d3.hierarchy(videoGameData);
 
-        let colorScale = d3.scaleQuantize().domain([0,videoGameData.children.length - 1]).range(d3.schemeSpectral[9])
+        let colours = generateColours(videoGameData.children.length);
 
-        d3.select("main").append("svg").attr("width", 1000).attr("height", 500);
+        d3.select("main").append("svg").attr("width", 1000).attr("height", 1000);
         let svg = d3.select("svg");
 
-        let map = colorScale(videoGameData.children.map(x => x.name).indexOf("N64"));
-        console.log(map)
+        let map = videoGameData.children.map(x => x.name);
 
         let treeMapLayout = d3.treemap();
 
@@ -20,10 +18,11 @@ window.addEventListener("DOMContentLoaded", event => {
         .size([1000,500])
 
         root.sum(d => d.value)
+        root.sort((a,b) => {
+            return b.value - a.value;
+        })
 
         treeMapLayout(root);
-
-        console.log(root.leaves())
 
         svg.selectAll("g")
            .data(root.leaves())
@@ -35,7 +34,7 @@ window.addEventListener("DOMContentLoaded", event => {
            .append("rect")
            .attr("width", d => d.x1 - d.x0)
            .attr("height", d => d.y1 - d.y0)
-           .attr("fill", d => colorScale(videoGameData.children.map(x => x.name).indexOf(d.data.category)))
+           .attr("fill", (d,i) => colours[map.indexOf(d.data.category)])
            .attr("class", "tile")
            .attr("data-name", d => d.data.name)
            .attr("data-category", d => d.data.category)
@@ -50,11 +49,27 @@ window.addEventListener("DOMContentLoaded", event => {
            .attr("x", 1)
            .attr("font-size", "8px")
 
+         svg.append("g").attr("id", "legend")
+         let legend = d3.select("#legend")
+
+         console.log(map)
+
+         legend
+         .selectAll("circle")
+         .data(map)
+         .enter()
+         .append("circle")
+         .attr("r", 5)
+         .attr("cx", (d,i) => (i * 10) + 25)
+         .attr("cy", 550)
+         .attr("fill", (d, i) => colours[map.indexOf(d)])
+
+
         function handleMouseOver(e, d) {
              d3.select(this).attr("fill", "white")
         }
         function handleMouseOut(e, d) {
-            d3.select(this).attr("fill", colorScale(videoGameData.children.map(x => x.name).indexOf(d.data.category)))
+            d3.select(this).attr("fill", colours[map.indexOf(d.data.category)])
        }
 
     })
@@ -63,7 +78,38 @@ window.addEventListener("DOMContentLoaded", event => {
         return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then(response => response.json());
     }
 
-    
+    function generateColours(parentDataPointCount) {
+       
+        let colours = [];
+        let k = (parentDataPointCount / 6) + 1;
+       
+        let _temp;
 
+        let blues = d3.schemeBlues[k];
+        blues.shift()
+        colours = colours.concat(blues);
+
+        let greens = d3.schemeGreens[k];
+        greens.shift()
+        colours = colours.concat(greens);
+
+        let greys = d3.schemeGreys[k];
+        greys.shift()
+        colours = colours.concat(greys);
+
+        let oranges = d3.schemeOranges[k];
+        oranges.shift()
+        colours = colours.concat(oranges);
+
+        let purples = d3.schemePurples[k];
+        purples.shift()
+        colours = colours.concat(purples);
+
+        let reds = d3.schemeReds[k];
+        reds.shift()
+        colours = colours.concat(reds);
+
+        return colours;
+    }
 
 });
