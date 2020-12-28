@@ -41,13 +41,17 @@ window.addEventListener("DOMContentLoaded", event => {
            .attr("data-value", d => d.data.value)
            .on("mouseover", handleMouseOver)
            .on("mouseout", handleMouseOut)
+           .on("mousemove", handleMouseMove)
 
         svg.selectAll("g")
            .append("text")
            .text(d => d.data.name)
-           .attr("y", 9)
-           .attr("x", 1)
-           .attr("font-size", "8px")
+           .attr("y", 13)
+           .attr("x", 3)
+           .attr("width", d => d.x1 - d.x0)
+           .attr("height", d => d.y1 - d.y0)
+           .attr("font-size", "12px")
+           .attr("font-family", "Tahoma")
 
          svg.append("g").attr("id", "legend")
          let legend = d3.select("#legend")
@@ -55,21 +59,40 @@ window.addEventListener("DOMContentLoaded", event => {
          console.log(map)
 
          legend
-         .selectAll("circle")
+         .selectAll("rect")
          .data(map)
          .enter()
-         .append("circle")
-         .attr("r", 5)
-         .attr("cx", (d,i) => (i * 10) + 25)
-         .attr("cy", 550)
+         .append("rect")
+         .attr("class", "legend-item")
+         .attr("width", 10)
+         .attr("height", 10)
+         .attr("x", 50)
+         .attr("y", (d,i) => 550 + (i * 20))
          .attr("fill", (d, i) => colours[map.indexOf(d)])
 
 
+        function handleMouseMove(e, d) {
+            handleMouseOut(e, d)
+            handleMouseOver(e, d)
+        }
+
         function handleMouseOver(e, d) {
-             d3.select(this).attr("fill", "white")
+
+            d3.select("#tooltip")
+                .html(`Game: ${d.data.name}<br>Console: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
+                .style("background-color", "rgb(0,0,0,0.7)")
+                .style("color", "whitesmoke")
+                .style("padding", "10px")
+               .style("border-radius", "3px")
+               .style("top", `${e.pageY + 15}px`)
+               .style("left", `${e.pageX + 15}px`)
+               .style("display", "block")
+               .attr("data-value", d.data.value)
+
         }
         function handleMouseOut(e, d) {
-            d3.select(this).attr("fill", colours[map.indexOf(d.data.category)])
+            //d3.select(this).attr("fill", colours[map.indexOf(d.data.category)])
+            d3.select("#tooltip").style("display", "none")
        }
 
     })
