@@ -15,7 +15,7 @@ window.addEventListener("DOMContentLoaded", event => {
         let treeMapLayout = d3.treemap();
 
         treeMapLayout
-        .size([1000,500])
+        .size([960,570])
 
         root.sum(d => d.value)
         root.sort((a,b) => {
@@ -29,6 +29,7 @@ window.addEventListener("DOMContentLoaded", event => {
            .enter()
            .append("g")
            .attr("transform", d => `translate(${d.x0},${d.y0})`)
+           .attr("id", d => `cid${d.data.category}_${d.data.name.replace(/\s|&|\.|\:|\/|\(|\)|!/g,"_")}`)
         
         svg.selectAll("g")
            .append("rect")
@@ -45,14 +46,41 @@ window.addEventListener("DOMContentLoaded", event => {
 
         svg.selectAll("g")
            .append("text")
-           .text(d => d.data.name)
+           .attr("id", d => `text${d.data.category}_${d.data.name.replace(/\s|&|\.|\:|\/|\(|\)|!/g,"_")}`)
            .attr("y", 13)
            .attr("x", 3)
            .attr("width", d => d.x1 - d.x0)
            .attr("height", d => d.y1 - d.y0)
-           .attr("font-size", "12px")
+           .attr("font-size", "11px")
            .attr("font-family", "Tahoma")
+           .html(d => splitTitleString(d))
 
+
+
+           
+         
+         function splitTitleString(d) {
+            let skips = 0;
+            let array = d.data.name.split(" ");
+            let htmlString = "";
+            for (let i = 0; i < array.length; i++) {
+                if ((13 * (1+i)) > (d.y1 - d.y0)) {
+                    break;
+                }                
+                if (array[i].length <= 2) {
+                    let add = ` ${array[i]}</tspan>`
+                    htmlString = htmlString.replace(/\<\/tspan\>$/g, add)
+                    skips++
+                } else
+                {
+                    htmlString += `<tspan x='${3}' y='${13 * (i + 1 - skips)}'>${array[i]}</tspan>`
+                }
+                    
+            }
+            return htmlString;
+         }
+         
+         
          svg.append("g").attr("id", "legend")
          let legend = d3.select("#legend")
 
@@ -77,7 +105,6 @@ window.addEventListener("DOMContentLoaded", event => {
         }
 
         function handleMouseOver(e, d) {
-
             d3.select("#tooltip")
                 .html(`Game: ${d.data.name}<br>Console: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
                 .style("background-color", "rgb(0,0,0,0.7)")
