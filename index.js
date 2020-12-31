@@ -5,9 +5,11 @@ window.addEventListener("DOMContentLoaded", event => {
 
         let root = d3.hierarchy(videoGameData);
 
+        console.log()
+
         let colours = generateColours(videoGameData.children.length);
 
-        d3.select("main").append("svg").attr("width", 1000).attr("height", 1000);
+        d3.select("main").append("svg").attr("width", 1080).attr("height", 1000);
         let svg = d3.select("svg");
 
         let map = videoGameData.children.map(x => x.name);
@@ -15,7 +17,7 @@ window.addEventListener("DOMContentLoaded", event => {
         let treeMapLayout = d3.treemap();
 
         treeMapLayout
-        .size([960,570])
+        .size([1080,525])
 
         root.sum(d => d.value)
         root.sort((a,b) => {
@@ -29,7 +31,6 @@ window.addEventListener("DOMContentLoaded", event => {
            .enter()
            .append("g")
            .attr("transform", d => `translate(${d.x0},${d.y0})`)
-           .attr("id", d => `cid${d.data.category}_${d.data.name.replace(/\s|&|\.|\:|\/|\(|\)|!/g,"_")}`)
         
         svg.selectAll("g")
            .append("rect")
@@ -46,7 +47,6 @@ window.addEventListener("DOMContentLoaded", event => {
 
         svg.selectAll("g")
            .append("text")
-           .attr("id", d => `text${d.data.category}_${d.data.name.replace(/\s|&|\.|\:|\/|\(|\)|!/g,"_")}`)
            .attr("y", 13)
            .attr("x", 3)
            .attr("width", d => d.x1 - d.x0)
@@ -54,7 +54,9 @@ window.addEventListener("DOMContentLoaded", event => {
            .attr("font-size", "11px")
            .attr("font-family", "Tahoma")
            .html(d => splitTitleString(d))
-
+           .on("mouseover", handleMouseOver)
+           .on("mouseout", handleMouseOut)
+           .on("mousemove", handleMouseMove)
 
 
            
@@ -67,13 +69,13 @@ window.addEventListener("DOMContentLoaded", event => {
                 if ((13 * (1+i)) > (d.y1 - d.y0)) {
                     break;
                 }                
-                if (array[i].length <= 2) {
+                if (array[i].length <= 2 && i > 0) {
                     let add = ` ${array[i]}</tspan>`
                     htmlString = htmlString.replace(/\<\/tspan\>$/g, add)
                     skips++
                 } else
                 {
-                    htmlString += `<tspan x='${3}' y='${13 * (i + 1 - skips)}'>${array[i]}</tspan>`
+                    htmlString += `<tspan x='${4}' y='${13 * (i + 1 - skips)}'>${array[i]}</tspan>`
                 }
                     
             }
@@ -94,10 +96,33 @@ window.addEventListener("DOMContentLoaded", event => {
          .attr("class", "legend-item")
          .attr("width", 10)
          .attr("height", 10)
-         .attr("x", 50)
-         .attr("y", (d,i) => 550 + (i * 20))
+         .attr("x",  (d, i) => (sortLegend(map.length, i)[0] * 50) + (75 * (sortLegend(map.length, i)[0] - 1)))
+         .attr("y", (d,i) => 550 + (sortLegend(map.length, i)[1] * 20))
          .attr("fill", (d, i) => colours[map.indexOf(d)])
 
+         legend.append("text").attr("id", "legend-labels");
+         let labels = d3.select("#legend-labels");
+         labels.selectAll("tspan")
+         .data(map)
+         .enter()
+         .append("tspan")
+         .text(d => d)
+         .attr("width", 200)
+         .attr("height", 20)
+         .attr("x", (d, i) => (sortLegend(map.length, i)[0] * 75) + (50 * (sortLegend(map.length, i)[0] - 1)))
+         .attr("y", (d,i) => 560 + (sortLegend(map.length, i)[1] * 20)) //(d,i) => 560 + (i * 20)
+         .style("font-size", "12px")
+         
+         function sortLegend(dataPoints, i) {
+            let itemsPerColumn = Math.ceil(dataPoints / 3);
+
+            let column = Math.ceil((i + 1) / itemsPerColumn)
+            let row = (i + 1) % itemsPerColumn;
+
+            row = (row === 0) ? itemsPerColumn : row;
+
+            return [column, row];
+         }
 
         function handleMouseMove(e, d) {
             handleMouseOut(e, d)
@@ -106,7 +131,7 @@ window.addEventListener("DOMContentLoaded", event => {
 
         function handleMouseOver(e, d) {
             d3.select("#tooltip")
-                .html(`Game: ${d.data.name}<br>Console: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
+                .html(`Title: ${d.data.name}<br>Category: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
                 .style("background-color", "rgb(0,0,0,0.7)")
                 .style("color", "whitesmoke")
                 .style("padding", "10px")
@@ -118,21 +143,26 @@ window.addEventListener("DOMContentLoaded", event => {
 
         }
         function handleMouseOut(e, d) {
-            //d3.select(this).attr("fill", colours[map.indexOf(d.data.category)])
             d3.select("#tooltip").style("display", "none")
        }
 
     })
 
     function getData () {
-        return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then(response => response.json());
+        //return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then(response => response.json());
+        return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/kickstarter-funding-data.json").then(response => response.json());
+        //return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json").then(response => response.json());
     }
 
     function generateColours(parentDataPointCount) {
        
+        console.log(parentDataPointCount)
+
         let colours = [];
-        let k = (parentDataPointCount / 6) + 1;
+        let k = Math.ceil((parentDataPointCount / 6) + 1);
        
+
+
         let _temp;
 
         let blues = d3.schemeBlues[k];
