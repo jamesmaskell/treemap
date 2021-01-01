@@ -1,195 +1,158 @@
-window.addEventListener("DOMContentLoaded", event => {
+window.addEventListener("DOMContentLoaded", (event) => {
+  getData().then((response) => {
+    let dataObject = response;
 
-    getData().then(response => {
-        let videoGameData = response;
+    let root = d3.hierarchy(dataObject);
+    let colours = generateColours(dataObject.children.length);
 
-        let root = d3.hierarchy(videoGameData);
+    let svg = d3.select("main").append("svg").attr("width", 1080).attr("height", 1000);
 
-        console.log()
+    let platformArray = dataObject.children.map((x) => x.name);
 
-        let colours = generateColours(videoGameData.children.length);
+    let treeMapLayout = d3.treemap().paddingInner(2);
 
-        d3.select("main").append("svg").attr("width", 1080).attr("height", 1000);
-        let svg = d3.select("svg");
+    treeMapLayout.size([1080, 525]);
 
-        let map = videoGameData.children.map(x => x.name);
+    root.sum((d) => d.value);
+    root.sort((a, b) => {
+      return b.value - a.value;
+    });
 
-        let treeMapLayout = d3.treemap();
+    treeMapLayout(root);
+    console.log(d3.group(root, (d) => d.height));
 
-        treeMapLayout
-        .size([1080,525])
+    svg
+      .selectAll("g")
+      .data(root.leaves())
+      .enter()
+      .append("g")
+      .attr("transform", (d) => `translate(${d.x0},${d.y0})`);
 
-        root.sum(d => d.value)
-        root.sort((a,b) => {
-            return b.value - a.value;
-        })
+    svg
+      .selectAll("g")
+      .append("rect")
+      .attr("width", (d) => d.x1 - d.x0)
+      .attr("height", (d) => d.y1 - d.y0)
+      .attr("fill", (d, i) => colours[platformArray.indexOf(d.data.category)])
+      .attr("class", "tile")
+      .attr("data-name", (d) => d.data.name)
+      .attr("data-category", (d) => d.data.category)
+      .attr("data-value", (d) => d.data.value)
+      .on("mouseover", handleMouseOver)
+      .on("mouseout", handleMouseOut)
+      .on("mousemove", handleMouseMove);
 
-        treeMapLayout(root);
+    svg
+      .selectAll("g")
+      .append("text")
+      .attr("y", 13)
+      .attr("x", 3)
+      .attr("width", (d) => d.x1 - d.x0)
+      .attr("height", (d) => d.y1 - d.y0)
+      .attr("font-size", "11px")
+      .attr("font-family", "Tahoma")
+      .html((d) => splitTitleString(d))
+      .on("mouseover", handleMouseOver)
+      .on("mouseout", handleMouseOut)
+      .on("mousemove", handleMouseMove);
 
-        svg.selectAll("g")
-           .data(root.leaves())
-           .enter()
-           .append("g")
-           .attr("transform", d => `translate(${d.x0},${d.y0})`)
-        
-        svg.selectAll("g")
-           .append("rect")
-           .attr("width", d => d.x1 - d.x0)
-           .attr("height", d => d.y1 - d.y0)
-           .attr("fill", (d,i) => colours[map.indexOf(d.data.category)])
-           .attr("class", "tile")
-           .attr("data-name", d => d.data.name)
-           .attr("data-category", d => d.data.category)
-           .attr("data-value", d => d.data.value)
-           .on("mouseover", handleMouseOver)
-           .on("mouseout", handleMouseOut)
-           .on("mousemove", handleMouseMove)
+    createLegend(svg.append("g").attr("id", "legend"));
 
-        svg.selectAll("g")
-           .append("text")
-           .attr("y", 13)
-           .attr("x", 3)
-           .attr("width", d => d.x1 - d.x0)
-           .attr("height", d => d.y1 - d.y0)
-           .attr("font-size", "11px")
-           .attr("font-family", "Tahoma")
-           .html(d => splitTitleString(d))
-           .on("mouseover", handleMouseOver)
-           .on("mouseout", handleMouseOut)
-           .on("mousemove", handleMouseMove)
+    function createLegend(legend) {
+      let offset = (1080 - 450) / 2;
 
+      legend
+        .selectAll("rect")
+        .data(platformArray)
+        .enter()
+        .append("rect")
+        .attr("class", "legend-item")
+        .attr("width", 10)
+        .attr("height", 10)
+        .attr("x", (d, i) => offset + (sortLegend(platformArray.length, i)[0] - 1) * 150)
+        .attr("y", (d, i) => 550 + sortLegend(platformArray.length, i)[1] * 20)
+        .attr("fill", (d, i) => colours[platformArray.indexOf(d)]);
 
-           
-         
-         function splitTitleString(d) {
-            let skips = 0;
-            let array = d.data.name.split(" ");
-            let htmlString = "";
-            for (let i = 0; i < array.length; i++) {
-                if ((13 * (1+i)) > (d.y1 - d.y0)) {
-                    break;
-                }                
-                if (array[i].length <= 2 && i > 0) {
-                    let add = ` ${array[i]}</tspan>`
-                    htmlString = htmlString.replace(/\<\/tspan\>$/g, add)
-                    skips++
-                } else
-                {
-                    htmlString += `<tspan x='${4}' y='${13 * (i + 1 - skips)}'>${array[i]}</tspan>`
-                }
-                    
-            }
-            return htmlString;
-         }
-         
-         
-         svg.append("g").attr("id", "legend")
-         let legend = d3.select("#legend")
+      let labels = legend.append("text").attr("id", "legend-labels");
 
-         console.log(map)
-
-         legend
-         .selectAll("rect")
-         .data(map)
-         .enter()
-         .append("rect")
-         .attr("class", "legend-item")
-         .attr("width", 10)
-         .attr("height", 10)
-         .attr("x",  (d, i) => (sortLegend(map.length, i)[0] * 50) + (75 * (sortLegend(map.length, i)[0] - 1)))
-         .attr("y", (d,i) => 550 + (sortLegend(map.length, i)[1] * 20))
-         .attr("fill", (d, i) => colours[map.indexOf(d)])
-
-         legend.append("text").attr("id", "legend-labels");
-         let labels = d3.select("#legend-labels");
-         labels.selectAll("tspan")
-         .data(map)
-         .enter()
-         .append("tspan")
-         .text(d => d)
-         .attr("width", 200)
-         .attr("height", 20)
-         .attr("x", (d, i) => (sortLegend(map.length, i)[0] * 75) + (50 * (sortLegend(map.length, i)[0] - 1)))
-         .attr("y", (d,i) => 560 + (sortLegend(map.length, i)[1] * 20)) //(d,i) => 560 + (i * 20)
-         .style("font-size", "12px")
-         
-         function sortLegend(dataPoints, i) {
-            let itemsPerColumn = Math.ceil(dataPoints / 3);
-
-            let column = Math.ceil((i + 1) / itemsPerColumn)
-            let row = (i + 1) % itemsPerColumn;
-
-            row = (row === 0) ? itemsPerColumn : row;
-
-            return [column, row];
-         }
-
-        function handleMouseMove(e, d) {
-            handleMouseOut(e, d)
-            handleMouseOver(e, d)
-        }
-
-        function handleMouseOver(e, d) {
-            d3.select("#tooltip")
-                .html(`Title: ${d.data.name}<br>Category: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
-                .style("background-color", "rgb(0,0,0,0.7)")
-                .style("color", "whitesmoke")
-                .style("padding", "10px")
-               .style("border-radius", "3px")
-               .style("top", `${e.pageY + 15}px`)
-               .style("left", `${e.pageX + 15}px`)
-               .style("display", "block")
-               .attr("data-value", d.data.value)
-
-        }
-        function handleMouseOut(e, d) {
-            d3.select("#tooltip").style("display", "none")
-       }
-
-    })
-
-    function getData () {
-        //return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then(response => response.json());
-        return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/kickstarter-funding-data.json").then(response => response.json());
-        //return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json").then(response => response.json());
+      labels
+        .selectAll("tspan")
+        .data(platformArray)
+        .enter()
+        .append("tspan")
+        .text((d) => d)
+        .attr("width", 200)
+        .attr("height", 20)
+        .attr("x", (d, i) => offset + 25 + (sortLegend(platformArray.length, i)[0] - 1) * 150)
+        .attr("y", (d, i) => 560 + sortLegend(platformArray.length, i)[1] * 20)
+        .style("font-size", "12px");
     }
+  });
 
-    function generateColours(parentDataPointCount) {
-       
-        console.log(parentDataPointCount)
+  function getData() {
+    return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then((response) => response.json());
+  }
 
-        let colours = [];
-        let k = Math.ceil((parentDataPointCount / 6) + 1);
-       
+  function generateColours(parentDataPointCount) {
+    let k = Math.ceil(parentDataPointCount / 6 + 1);
 
+    let colours = [];
+    colours = colours.concat(getSchemeColours(d3.schemeBlues[k]));
+    colours = colours.concat(getSchemeColours(d3.schemeGreens[k]));
+    colours = colours.concat(getSchemeColours(d3.schemeGreys[k]));
+    colours = colours.concat(getSchemeColours(d3.schemeOranges[k]));
+    colours = colours.concat(getSchemeColours(d3.schemePurples[k]));
+    colours = colours.concat(getSchemeColours(d3.schemeReds[k]));
 
-        let _temp;
+    return colours;
+  }
 
-        let blues = d3.schemeBlues[k];
-        blues.shift()
-        colours = colours.concat(blues);
+  function getSchemeColours(scheme) {
+    scheme.shift();
+    return scheme;
+  }
 
-        let greens = d3.schemeGreens[k];
-        greens.shift()
-        colours = colours.concat(greens);
-
-        let greys = d3.schemeGreys[k];
-        greys.shift()
-        colours = colours.concat(greys);
-
-        let oranges = d3.schemeOranges[k];
-        oranges.shift()
-        colours = colours.concat(oranges);
-
-        let purples = d3.schemePurples[k];
-        purples.shift()
-        colours = colours.concat(purples);
-
-        let reds = d3.schemeReds[k];
-        reds.shift()
-        colours = colours.concat(reds);
-
-        return colours;
+  function splitTitleString(d) {
+    let skips = 0;
+    let array = d.data.name.split(" ");
+    let htmlString = "";
+    for (let i = 0; i < array.length; i++) {
+      if (13 * (1 + i) > d.y1 - d.y0) break;
+      if (array[i].length <= 2 && i > 0) {
+        let add = ` ${array[i]}</tspan>`;
+        htmlString = htmlString.replace(/\<\/tspan\>$/g, add);
+        skips++;
+      } else htmlString += `<tspan x='${4}' y='${13 * (i + 1 - skips)}'>${array[i]}</tspan>`;
     }
+    return htmlString;
+  }
 
+  function sortLegend(dataPoints, i) {
+    let itemsPerColumn = Math.ceil(dataPoints / 3);
+    let column = Math.ceil((i + 1) / itemsPerColumn);
+    let row = (i + 1) % itemsPerColumn;
+    row = row === 0 ? itemsPerColumn : row;
+    return [column, row];
+  }
+
+  function handleMouseMove(e, d) {
+    handleMouseOut(e, d);
+    handleMouseOver(e, d);
+  }
+
+  function handleMouseOver(e, d) {
+    d3.select("#tooltip")
+      .html(`Title: ${d.data.name}<br>Category: ${d.data.category}<br>Units sold (millions): ${d.data.value}`)
+      .style("background-color", "rgb(0,0,0,0.7)")
+      .style("color", "whitesmoke")
+      .style("padding", "10px")
+      .style("border-radius", "3px")
+      .style("top", `${e.pageY + 15}px`)
+      .style("left", `${e.pageX + 15}px`)
+      .style("display", "block")
+      .attr("data-value", d.data.value);
+  }
+  function handleMouseOut(e, d) {
+    d3.select("#tooltip").style("display", "none");
+  }
 });
