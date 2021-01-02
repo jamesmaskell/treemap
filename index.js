@@ -1,96 +1,67 @@
 window.addEventListener("DOMContentLoaded", (event) => {
-  getData().then((response) => {
-    let dataObject = response;
+  let width = 1080;
+  let height = 525;
 
-    let root = d3.hierarchy(dataObject);
-    let colours = generateColours(dataObject.children.length);
+  async function getData() {
+    return await fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then((response) => response.json());
+  }
 
-    let svg = d3.select("main").append("svg").attr("width", 1080).attr("height", 1000);
+  function draw() {
+    getData().then((d) => {
+      let dataObject = d;
 
-    let platformArray = dataObject.children.map((x) => x.name);
+      let highestLevelCategoryArray = dataObject.children.map((x) => x.name);
+      let colours = generateColours(dataObject.children.length);
 
-    let treeMapLayout = d3.treemap().paddingInner(2);
+      let svg = d3.select("main").append("svg").attr("width", width).attr("height", 1000);
 
-    treeMapLayout.size([1080, 525]);
+      // setup tree map
+      let root = d3.hierarchy(dataObject);
+      let treeMapLayout = d3.treemap().paddingInner(2);
+      treeMapLayout.size([1080, 525]);
+      root.sum((d) => d.value);
+      root.sort((a, b) => {
+        return b.value - a.value;
+      });
+      treeMapLayout(root);
 
-    root.sum((d) => d.value);
-    root.sort((a, b) => {
-      return b.value - a.value;
-    });
-
-    treeMapLayout(root);
-    console.log(d3.group(root, (d) => d.height));
-
-    svg
-      .selectAll("g")
-      .data(root.leaves())
-      .enter()
-      .append("g")
-      .attr("transform", (d) => `translate(${d.x0},${d.y0})`);
-
-    svg
-      .selectAll("g")
-      .append("rect")
-      .attr("width", (d) => d.x1 - d.x0)
-      .attr("height", (d) => d.y1 - d.y0)
-      .attr("fill", (d, i) => colours[platformArray.indexOf(d.data.category)])
-      .attr("class", "tile")
-      .attr("data-name", (d) => d.data.name)
-      .attr("data-category", (d) => d.data.category)
-      .attr("data-value", (d) => d.data.value)
-      .on("mouseover", handleMouseOver)
-      .on("mouseout", handleMouseOut)
-      .on("mousemove", handleMouseMove);
-
-    svg
-      .selectAll("g")
-      .append("text")
-      .attr("y", 13)
-      .attr("x", 3)
-      .attr("width", (d) => d.x1 - d.x0)
-      .attr("height", (d) => d.y1 - d.y0)
-      .attr("font-size", "11px")
-      .attr("font-family", "Tahoma")
-      .html((d) => splitTitleString(d))
-      .on("mouseover", handleMouseOver)
-      .on("mouseout", handleMouseOut)
-      .on("mousemove", handleMouseMove);
-
-    createLegend(svg.append("g").attr("id", "legend"));
-
-    function createLegend(legend) {
-      let offset = (1080 - 450) / 2;
-
-      legend
-        .selectAll("rect")
-        .data(platformArray)
+      svg
+        .selectAll("g")
+        .data(root.leaves())
         .enter()
+        .append("g")
+        .attr("transform", (d) => `translate(${d.x0},${d.y0})`);
+
+      svg
+        .selectAll("g")
         .append("rect")
-        .attr("class", "legend-item")
-        .attr("width", 10)
-        .attr("height", 10)
-        .attr("x", (d, i) => offset + (sortLegend(platformArray.length, i)[0] - 1) * 150)
-        .attr("y", (d, i) => 550 + sortLegend(platformArray.length, i)[1] * 20)
-        .attr("fill", (d, i) => colours[platformArray.indexOf(d)]);
+        .attr("width", (d) => d.x1 - d.x0)
+        .attr("height", (d) => d.y1 - d.y0)
+        .attr("fill", (d, i) => colours[highestLevelCategoryArray.indexOf(d.data.category)])
+        .attr("class", "tile")
+        .attr("data-name", (d) => d.data.name)
+        .attr("data-category", (d) => d.data.category)
+        .attr("data-value", (d) => d.data.value)
+        .on("mouseover", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .on("mousemove", handleMouseMove);
 
-      let labels = legend.append("text").attr("id", "legend-labels");
+      svg
+        .selectAll("g")
+        .append("text")
+        .attr("y", 13)
+        .attr("x", 3)
+        .attr("width", (d) => d.x1 - d.x0)
+        .attr("height", (d) => d.y1 - d.y0)
+        .attr("font-size", "11px")
+        .attr("font-family", "Tahoma")
+        .html((d) => splitTitleString(d))
+        .on("mouseover", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .on("mousemove", handleMouseMove);
 
-      labels
-        .selectAll("tspan")
-        .data(platformArray)
-        .enter()
-        .append("tspan")
-        .text((d) => d)
-        .attr("width", 200)
-        .attr("height", 20)
-        .attr("x", (d, i) => offset + 25 + (sortLegend(platformArray.length, i)[0] - 1) * 150)
-        .attr("y", (d, i) => 560 + sortLegend(platformArray.length, i)[1] * 20)
-        .style("font-size", "12px");
-    }
-  });
-
-  function getData() {
-    return fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json").then((response) => response.json());
+      createLegend(svg.append("g").attr("id", "legend"), highestLevelCategoryArray, colours);
+    });
   }
 
   function generateColours(parentDataPointCount) {
@@ -155,4 +126,36 @@ window.addEventListener("DOMContentLoaded", (event) => {
   function handleMouseOut(e, d) {
     d3.select("#tooltip").style("display", "none");
   }
+
+  function createLegend(legend, highestLevelCategoryArray, colours) {
+    let offset = (width - 450) / 2;
+
+    legend
+      .selectAll("rect")
+      .data(highestLevelCategoryArray)
+      .enter()
+      .append("rect")
+      .attr("class", "legend-item")
+      .attr("width", 10)
+      .attr("height", 10)
+      .attr("x", (d, i) => offset + (sortLegend(highestLevelCategoryArray.length, i)[0] - 1) * 150)
+      .attr("y", (d, i) => height + 25 + sortLegend(highestLevelCategoryArray.length, i)[1] * 20)
+      .attr("fill", (d, i) => colours[highestLevelCategoryArray.indexOf(d)]);
+
+    let labels = legend.append("text").attr("id", "legend-labels");
+
+    labels
+      .selectAll("tspan")
+      .data(highestLevelCategoryArray)
+      .enter()
+      .append("tspan")
+      .text((d) => d)
+      .attr("width", 200)
+      .attr("height", 20)
+      .attr("x", (d, i) => offset + 25 + (sortLegend(highestLevelCategoryArray.length, i)[0] - 1) * 150)
+      .attr("y", (d, i) => height + 35 + sortLegend(highestLevelCategoryArray.length, i)[1] * 20)
+      .style("font-size", "12px");
+  }
+
+  draw();
 });
